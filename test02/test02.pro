@@ -13,6 +13,7 @@ SOURCES += \
 
 # 头文件
 HEADERS += \
+    PlayerItem.h \
     widget.h \
     tmxmap.h
 
