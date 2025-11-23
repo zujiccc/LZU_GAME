@@ -1,7 +1,3 @@
-#ifndef PLAYERITEM_H
-#define PLAYERITEM_H
-
-#endif // PLAYERITEM_H
 
 // PlayerItem.h
 #pragma once
@@ -18,7 +14,8 @@ public:
         : QObject(parent), QGraphicsPixmapItem() {}
 
     // 允许设置图像
-    void setPixmap(const QPixmap &pixmap) {
+    void setPixmap(const QPixmap &pixmap)
+    {
         QGraphicsPixmapItem::setPixmap(pixmap);
     }
 

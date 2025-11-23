@@ -14,45 +14,59 @@ TmxMap::TmxMap(QObject *parent) : QObject(parent) {}
 bool TmxMap::load(const QString &fileName)
 {
     QFile file(fileName);
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+    //只读模式+文本模式
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+    {
         qWarning() << "Cannot open" << fileName;
         return false;
     }
 
-    // 获取文件所在目录，用于解析相对路径
+    // 获取文件所在目录(不包括文件名本身)，用于解析相对路径
     m_basePath = QFileInfo(fileName).absolutePath();
 
 
     /*
+      整个部分的作用:把打开的TMX文件解析成qt能操作的XML文件
       QDomDocument doc;
-      这里创建了一个QDomDocument对象doc。QDomDocument是Qt框架中用于处理XML文档的类，它提供了对XML文档进行操作的方法。
+      这里创建了一个QDomDocument对象doc。用于存储和操作解析后的XML文件。QDomDocument是Qt框架中用于处理XML文档的类，它提供了对XML文档进行操作的方法。
+      doc.setContent(&file, &err, &el, &ec)：从打开的文件对象 file 中读取内容，并解析为 XML 结构；
       QString err; int el, ec;
       定义了三个变量：err是一个QString类型的变量，用来存储可能出现的错误信息；el和ec是两个整数类型的变量，分别代表错误发生的行号（line）和列号（column）。
     */
     QDomDocument doc;
     QString err;
     int el, ec;
-    if (!doc.setContent(&file, &err, &el, &ec)) {
+    if (!doc.setContent(&file, &err, &el, &ec))
+    {
         qWarning() << "XML error:" << err << "at" << el << ec;
         return false;
     }
     file.close();
 
     /*
+    整个部分作用:确保当前文件是标准的 TMX 文件，而非其他 XML 文件；
     documentElement() 是 QDomDocument 的成员函数，它返回 XML 文档的根元素（root element）。
     在 .tmx 文件中，根元素必须是 <map>
     */
     QDomElement root = doc.documentElement();
-    if (root.tagName() != "map") {
+    if (root.tagName() != "map")
+    {
         qWarning() << "Not a TMX file";
         return false;
     }
 
     /* 1. 地图头 */
-    m_mapWidth = root.attribute("width").toInt();
-    m_mapHeight = root.attribute("height").toInt();
-    m_tileWidth = root.attribute("tilewidth").toInt();
-    m_tileHeight = root.attribute("tileheight").toInt();
+    //整个部分作用:读取地图的核心基础参数，存入成员变量,并校验变量是否正确;
+    /*TMX文件的根元素中是:
+        <map width="100" height="80" tilewidth="32" tileheight="32">
+        <!-- 其他子元素（tileset、layer等） -->
+        </map>
+      此处用attribute()函数解析前四个元素，解析出来是字符串类型，用toInt函数转换为int类型;
+    */
+    m_mapWidth = root.attribute("width").toInt();  //地图宽度
+    m_mapHeight = root.attribute("height").toInt();  //地图高度
+    m_tileWidth = root.attribute("tilewidth").toInt();  //单个瓦片宽度
+    m_tileHeight = root.attribute("tileheight").toInt();  //单个瓦片高度
 
     if (m_tileWidth <= 0 || m_tileHeight <= 0 || m_mapWidth <= 0 || m_mapHeight <= 0) {
         qWarning() << "Invalid map dimensions";
@@ -67,6 +81,14 @@ bool TmxMap::load(const QString &fileName)
     是内联图块集（直接包含 <image>）
     还是外部引用（source="xxx.tsx"）
     并最终将瓦片信息存入 m_tiles。
+    m_tiles是TmxMap中的Tile结构体的对象：
+    QVector<Tile> m_tiles;(这是定义语句)
+    struct Tile
+    {
+        int id;             // 瓦片的全局唯一 ID（GID）
+        QString image;      // 瓦片所在的原图（瓦片图集）路径
+        QRect source;       // 瓦片在原图中的裁剪区域（x,y,宽,高）
+    };
     */
 
     QDomNodeList tilesetNodes = root.elementsByTagName("tileset");
@@ -106,10 +128,12 @@ bool TmxMap::parseTileset(const QDomElement &ts)
     int firstGid = ts.attribute("firstgid").toInt();
 
     /* 1. 如果路径是外部 TSX */
-    if (ts.hasAttribute("source")) {
+    if (ts.hasAttribute("source"))
+    {
         QString tsxFile = ts.attribute("source");
         // 如果是相对路径，需要相对于TMX文件路径
-        if (!tsxFile.startsWith(":/") && !tsxFile.startsWith("/")) {
+        if (!tsxFile.startsWith(":/") && !tsxFile.startsWith("/"))
+        {
             //m_basePath 是 .tmx 文件的绝对目录（在 load() 中已设置）
             //使用 QDir(m_basePath).absoluteFilePath(tsxFile) 将相对路径转为绝对路径
             tsxFile = QDir(m_basePath).absoluteFilePath(tsxFile);
@@ -122,14 +146,16 @@ bool TmxMap::parseTileset(const QDomElement &ts)
         调用 parseInlineTileset ——
         */
         QFile tsx(tsxFile);
-        if (!tsx.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        if (!tsx.open(QIODevice::ReadOnly | QIODevice::Text))
+        {
             qWarning() << "Cannot open external tsx:" << tsxFile;
             return false;
         }
         //XML 文档对象。
         QDomDocument tsxDoc;
        // 从已打开的 QFile 对象 tsx 中读取数据，并尝试解析为 XML 文档。
-        if (!tsxDoc.setContent(&tsx)) {
+        if (!tsxDoc.setContent(&tsx))
+        {
             qWarning() << "Invalid tsx XML";
             return false;
         }
@@ -150,6 +176,7 @@ bool TmxMap::parseTileset(const QDomElement &ts)
 5	验证数据量是否匹配
 6	转换字符串为 GID 整数数组
 7	存入全局图层列表
+8   解析障碍物图层
 */
 bool TmxMap::parseLayer(const QDomElement &layerElem)
 {
@@ -158,14 +185,16 @@ bool TmxMap::parseLayer(const QDomElement &layerElem)
     lay.width = layerElem.attribute("width").toInt();
     lay.height = layerElem.attribute("height").toInt();
     //校验图层尺寸是否匹配地图整体尺寸
-    if (lay.width != m_mapWidth || lay.height != m_mapHeight) {
+    if (lay.width != m_mapWidth || lay.height != m_mapHeight)
+    {
         qWarning() << "Layer dimensions mismatch:" << lay.name;
         return false;
     }
 
     QDomElement data = layerElem.firstChildElement("data");
     QString encoding = data.attribute("encoding");
-    if (encoding != "csv") {
+    if (encoding != "csv")
+    {
         qWarning() << "Only CSV encoding is supported, got:" << encoding;
         return false;
     }
@@ -173,13 +202,15 @@ bool TmxMap::parseLayer(const QDomElement &layerElem)
     QString csv = data.text();
     csv.remove('\n').remove('\r');
     const auto tiles = csv.split(',');
-    if (tiles.size() != lay.width * lay.height) {
+    if (tiles.size() != lay.width * lay.height)
+    {
         qWarning() << "Data size mismatch for layer" << lay.name;
         return false;
     }
 
     lay.data.reserve(tiles.size());
-    for (const QString &s : tiles) {
+    for (const QString &s : tiles)
+    {
         bool ok;
         int gid = s.trimmed().toInt(&ok);
         if (!ok) {
@@ -187,6 +218,10 @@ bool TmxMap::parseLayer(const QDomElement &layerElem)
             return false;
         }
         lay.data.append(gid);
+    }
+    if (lay.name == "Obstacle") //障碍物层
+    {
+        m_obstacleLayerIndex = m_layers.size(); // 记录当前图层索引
     }
 
     m_layers.append(lay);
@@ -201,9 +236,12 @@ void TmxMap::buildScene(QGraphicsScene *scene)
 
     scene->clear();
     //遍历所有图层（Layer）先绘制的图层在底层（如地面,后绘制的在上层（如装饰物、角色）
-    for (const Layer &lay : m_layers) {
-        for (int y = 0; y < lay.height; ++y) {
-            for (int x = 0; x < lay.width; ++x) {
+    for (const Layer &lay : m_layers)
+    {
+        for (int y = 0; y < lay.height; ++y)
+        {
+            for (int x = 0; x < lay.width; ++x)
+            {
                 //获取图层中每一个瓦片的gid
                 int gid = lay.data[y * lay.width + x];
                 if (gid == 0) continue;   // 0 表示空瓦片
@@ -307,4 +345,28 @@ bool TmxMap::parseInlineTileset(const QDomElement &tilesetElem, int firstGid)
 
     qDebug() << "Loaded tileset with" << tileCount << "tiles from" << imgPath;
     return true;
+}
+/*
+ 判断障碍物的接口
+*/
+bool TmxMap::isObstacle(int tileX, int tileY) const
+{
+    // 1. 边界检测：坐标超出地图范围 → 不是障碍物（避免越界）
+    if (tileX < 0 || tileX >= m_mapWidth || tileY < 0 || tileY >= m_mapHeight)
+    {
+        return false;
+    }
+
+    // 2. 无障碍物图层 → 不是障碍物
+    if (m_obstacleLayerIndex == -1)
+    {
+        return false;
+    }
+
+    // 3. 获取障碍物图层的数据
+    const Layer &obstacleLayer = m_layers[m_obstacleLayerIndex];
+    // 4. 计算该瓦片在图层数据中的索引（data 是一维数组，存储顺序：行优先）
+    int index = tileY * obstacleLayer.width + tileX;
+    // 5. GID != 0 → 该位置有障碍物瓦片（Tiled 中绘制的瓦片 GID 不为 0）
+    return obstacleLayer.data[index] != 0;
 }

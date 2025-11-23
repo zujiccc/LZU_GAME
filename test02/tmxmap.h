@@ -13,14 +13,16 @@
 #include <QDebug>
 
 /* 单个瓦片信息 */
-struct Tile {
+struct Tile
+{
     int id;          // 全局 GID（Global ID）
     QRect source;    // 在图块集图片中的裁剪区域（x, y, w, h）
     QString image;   // 图块集图片路径（如 "tiles.png"）
 };
 
 /* 一个图层 */
-struct Layer {
+struct Layer
+{
     QString name;
     int width;
     int height;
@@ -43,7 +45,8 @@ public:
 
     /* 把解析结果画到 scene 上 */
     void buildScene(QGraphicsScene *scene);
-
+    /*检测瓦片是否为障碍物*/
+    bool isObstacle(int tileX, int tileY) const;
     // 添加公共成员变量，以便在widget.cpp中访问
     int m_tileWidth = 0;
     int m_tileHeight = 0;
@@ -77,7 +80,9 @@ private:
     QVector<Tile> m_tiles;     // 全局 id -> Tile
     QVector<Layer> m_layers;
 
-    QString m_basePath;        // TMX文件所在目录，用于相对路径解析
+    QString m_basePath;// TMX文件所在目录，用于相对路径解析
+    /*记录障碍物图层的索引*/
+    int m_obstacleLayerIndex = -1;//障碍物图层的索引
 };
 
 #endif // TMXMAP_H

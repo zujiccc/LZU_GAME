@@ -7,6 +7,7 @@ TEMPLATE = app
 
 # 源文件
 SOURCES += \
+    StartWidget.cpp \
     main.cpp \
     widget.cpp \
     tmxmap.cpp
@@ -14,6 +15,7 @@ SOURCES += \
 # 头文件
 HEADERS += \
     PlayerItem.h \
+    StartWidget.h \
     widget.h \
     tmxmap.h
 
@@ -25,3 +27,6 @@ FORMS +=
 
 # 语言标准
 QMAKE_CXXFLAGS += -std=c++11
+
+DISTFILES += \
+    E:/tiled/myexmples/c.tmx

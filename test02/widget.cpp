@@ -71,11 +71,12 @@ Widget::~Widget()
 
 void Widget::loadMap()
 {
-    QString tmxPath = "E:/tiled project/test.tmx";  // ← 需要修改的实际路径
+    QString tmxPath ="E:\\tiled\\myexmples\\c.tmx";  // ← 需要修改的实际路径
 
     m_statusLabel->setText("正在加载地图: " + tmxPath);
 
-    if (!m_map->load(tmxPath)) {
+    if (!m_map->load(tmxPath))
+    {
         QString errorMsg = "加载 TMX 失败！请检查文件路径和格式。";
         qWarning() << errorMsg;
         m_statusLabel->setText(errorMsg);
@@ -141,13 +142,15 @@ void Widget::updatePlayerPosition()
 //实现键盘控制与平滑移动（无抽搐版本：使用滚动条动画）
 void Widget::keyPressEvent(QKeyEvent *event)
 {
-    if (m_isMoving || !m_map || !m_playerItem) {
+    if (m_isMoving || !m_map || !m_playerItem)
+    {
         event->ignore();
         return;
     }
 
     int dx = 0, dy = 0;
-    switch (event->key()) {
+    switch (event->key())
+    {
     case Qt::Key_Left:  dx = -1; break;
     case Qt::Key_Right: dx = 1;  break;
     case Qt::Key_Up:    dy = -1; break;
@@ -160,9 +163,17 @@ void Widget::keyPressEvent(QKeyEvent *event)
     int newX = m_playerX + dx;
     int newY = m_playerY + dy;
 
+    //地图边界检测
     if (newX < 0 || newX >= m_map->m_mapWidth ||
-        newY < 0 || newY >= m_map->m_mapHeight) {
+        newY < 0 || newY >= m_map->m_mapHeight)
+    {
         return;
+    }
+
+    //地图障碍物检测
+    if (m_map->isObstacle(newX, newY))
+    {
+            return; // 是障碍物 → 不移动，直接返回
     }
 
     m_isMoving = true;
@@ -218,7 +229,8 @@ void Widget::keyPressEvent(QKeyEvent *event)
     animV->start(QAbstractAnimation::DeleteWhenStopped);
 
     // 动画结束后更新逻辑坐标
-    connect(animPlayer, &QPropertyAnimation::finished, this, [this, newX, newY]() {
+    connect(animPlayer, &QPropertyAnimation::finished, this, [this, newX, newY]()
+    {
         m_playerX = newX;
         m_playerY = newY;
         m_isMoving = false;
